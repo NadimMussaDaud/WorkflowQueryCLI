@@ -17,11 +17,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.Nullable;
 
 public class Monitor implements Runnable {
+    //TODO: Implement past Jobs and Steps retrieval since last run
+    //TODO: Add more required info to Logs
+
     public static final String RESET = "\033[0m";
     public static final String WHITE_BOLD = "\033[1;37m"; // For ids
     public static final String RED_BOLD = "\033[1;31m";
     public static final String GREEN_BOLD = "\033[1;32m";
     public static final String YELLOW_BOLD = "\033[1;33m";
+
     private static final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
     private static final String GET_JOBS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs/%s/jobs";
     private static final String GET_JOB_RUN = "https://api.github.com/repos/%s/%s/actions/jobs/%s";
@@ -165,7 +169,7 @@ public class Monitor implements Runnable {
             }
             completionStatus = jobRun.get("status").asText().equals("completed");
             if(completionStatus)
-                customPrint(jobName, id, "completed", jobRun.get("conclusion").asText());
+                customPrint(jobName, id, jobRun.get("conclusion").asText());
             //To avoid hitting API rate limits
             else
                 Thread.sleep(3000);
@@ -174,18 +178,14 @@ public class Monitor implements Runnable {
 
     }
 
-    private void customPrint(String jobName, String id, String status, String jobConclusion) {
-        if (status.equals("completed")) {
-            switch (jobConclusion) {
-                case "success" ->
-                        System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
-                case "failure" ->
-                        System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
-                default ->
-                        System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
-            }
-        } else {
-            System.out.printf(YELLOW_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+    private void customPrint(String jobName, String id, String jobConclusion) {
+        switch (jobConclusion) {
+            case "success" ->
+                    System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+            case "failure" ->
+                    System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+            default ->
+                    System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
         }
     }
 
