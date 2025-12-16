@@ -5,11 +5,11 @@ import java.util.List;
 
 public class Main {
     static final String FILENAME = "Repositories.txt";
+    static final String OWNER = "NadimMussaDaud";
     static final File file = new File(FILENAME);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        String repo = args[0];
-        String token = args[1];
+        String repo = args[0], token = args[1];
         String timestamp = null;
 
         System.out.println("This is the repo: " + repo);
@@ -23,7 +23,7 @@ public class Main {
             if(info[0].equals(repo)) timestamp = info[1];
         }
 
-        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token, "NadimMussaDaud");
+        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token, OWNER);
 
         Thread monitorThread = new Thread(monitor, "monitor-thread");
         monitorThread.start();

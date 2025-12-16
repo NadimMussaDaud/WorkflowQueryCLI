@@ -13,9 +13,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.Nullable;
 
 public class Monitor implements Runnable {
+    //TODO: Implement colors scheme: Green for completed, Yellow for in_progress... and Red for failures
+    //TODO: Try to separate Jobs, Workflow runs and Steps with some structure.
+
     //This is an executor for many Threads since we assume MANY JOBS
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
+    private static final String GET_JOBS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs/%s/jobs";
 
     private final String owner;
     private final String repo ;
@@ -23,10 +28,6 @@ public class Monitor implements Runnable {
     private Instant timestamp;
     private boolean running = true;
     private final HttpClient httpClient;
-
-
-    private static final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
-    private static final String GET_JOBS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs/%s/jobs";
 
     public Monitor (String repo, @Nullable Instant timestamp, String token , String owner) {
         this.timestamp = timestamp;
