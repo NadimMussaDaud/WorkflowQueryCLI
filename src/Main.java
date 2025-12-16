@@ -8,12 +8,10 @@ public class Main {
     static final String OWNER = "NadimMussaDaud";
     static final File file = new File(FILENAME);
 
+    //TODO: Check on the owner info. Current just as an Example
     public static void main(String[] args) throws IOException, InterruptedException {
         String repo = args[0], token = args[1];
         String timestamp = null;
-
-        System.out.println("This is the repo: " + repo);
-        System.out.println("This is the token: " + token);
 
         if(!file.exists() && !file.createNewFile()) throw new RuntimeException();
 

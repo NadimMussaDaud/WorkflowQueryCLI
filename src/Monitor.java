@@ -17,11 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.Nullable;
 
 public class Monitor implements Runnable {
-    //TODO: Implement past Jobs and Steps retrieval since last run
-    //TODO: Add more required info to Logs
 
     public static final String RESET = "\033[0m";
-    public static final String WHITE_BOLD = "\033[1;37m"; // For ids
+    public static final String WHITE_BOLD = "\033[1;37m";
     public static final String RED_BOLD = "\033[1;31m";
     public static final String GREEN_BOLD = "\033[1;32m";
     public static final String YELLOW_BOLD = "\033[1;33m";
@@ -109,13 +107,12 @@ public class Monitor implements Runnable {
         JsonNode array = jobsRuns.get("jobs");
         for (JsonNode job : array) {
             String jobId = job.get("id").asText();
-            String status = job.get("status").asText();
-            boolean completionStatus = status.equals("completed");
             String jobName = job.get("name").asText();
 
-            if(!completionStatus && monitoredJobs.add(jobId)) {
+            if(monitoredJobs.add(jobId)) {
                 executorService.submit(() -> {
                     try {
+                        System.out.printf("Job %s started%n", jobName);
                         monitorJobSteps(jobId, jobName);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
@@ -148,28 +145,42 @@ public class Monitor implements Runnable {
 
                 if(!stepStatus.equals(previousStatus)) {
                     if ("completed".equals(stepStatus)) {
-                        System.out.printf("Step %s with JobID: %s: Completed At: %s| "+GREEN_BOLD+"Conclusion: %s"+RESET+"%n"
+                        System.out.printf("Step %s with JobID: "+WHITE_BOLD+"%s"+RESET+", SHA: %s , Branch: %s | Started At: %s | Completed At: %s| "+GREEN_BOLD+"Conclusion: %s"+RESET+"%n"
                                 , stepName
                                 , id
+                                , jobRun.get("head_sha").asText()
+                                , jobRun.get("head_branch").asText()
+                                , step.get("started_at").asText()
                                 , step.get("completed_at").asText()
                                 , step.get("conclusion").asText());
                     } else {
                         if(step.get("started_at") == null)
-                            System.out.printf("Step %s with JobID: %s: Started At: %s| "+YELLOW_BOLD+"Status: %s%n" + RESET
+                            System.out.printf("Step %s with JobID: "+WHITE_BOLD+"%s "+RESET+" SHA: %s , Branch: %s | "+YELLOW_BOLD+"Status: %s%n" + RESET
+                                    , stepName
+                                    , id
+                                    , jobRun.get("head_sha").asText()
+                                    , jobRun.get("head_branch").asText()
+                                    , stepStatus);
+                        else System.out.printf("Step %s with JobID:" + WHITE_BOLD +"%s" + RESET + " SHA: %s , Branch: %s | Started At: %s| "+YELLOW_BOLD+"Status: %s%n" + RESET
                                 , stepName
                                 , id
+                                , jobRun.get("head_sha").asText()
+                                , jobRun.get("head_branch").asText()
                                 , step.get("started_at").asText()
-                                , stepStatus);
-                        else System.out.printf("Step %s with JobID: %s | "+YELLOW_BOLD+"Status: %s%n" + RESET
-                                , stepName
-                                , id
                                 , stepStatus);
                     }
                 }
             }
             completionStatus = jobRun.get("status").asText().equals("completed");
             if(completionStatus)
-                customPrint(jobName, id, jobRun.get("conclusion").asText());
+                customPrint(
+                        jobName,
+                        id,
+                        jobRun.get("head_sha").asText(),
+                        jobRun.get("head_branch").asText(),
+                        jobRun.get("started_at").asText(),
+                        jobRun.get("completed_at").asText(),
+                        jobRun.get("conclusion").asText());
             //To avoid hitting API rate limits
             else
                 Thread.sleep(3000);
@@ -178,14 +189,20 @@ public class Monitor implements Runnable {
 
     }
 
-    private void customPrint(String jobName, String id, String jobConclusion) {
+    private void customPrint(String jobName, String id, String sha, String branch, String startTime ,String completeTime,String jobConclusion) {
         switch (jobConclusion) {
             case "success" ->
-                    System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+                    System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +"," +
+                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
+                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
             case "failure" ->
-                    System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+                    System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +"," +
+                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
+                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
             default ->
-                    System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+                    System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+"," +
+                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
+                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
         }
     }
 
