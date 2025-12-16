@@ -15,8 +15,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.Nullable;
 
 public class Monitor implements Runnable {
-    //TODO: Implement colors scheme: Green for completed, Yellow for in_progress... and Red for failures
     //TODO: Try to separate Jobs, Workflow runs and Steps with some structure.
+    public static final String RED_BOLD = "\033[1;31m";
+    public static final String GREEN_BOLD = "\033[1;32m";
+    public static final String YELLOW_BOLD = "\033[1;33m";
 
     //This is an executor for many Threads since we assume MANY JOBS
     private final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -165,5 +167,10 @@ public class Monitor implements Runnable {
 
         if(completionStatus && running)
             System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+    }
+
+    private void customPrint(String jobName, String id, String status, String jobConclusion) {
+        //TODO: Implement colors scheme: Green for completed, Yellow for in_progress... and Red for failures
+
     }
 }
