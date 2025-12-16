@@ -5,8 +5,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,6 +29,7 @@ public class Monitor implements Runnable {
     //This is an executor for many Threads since we assume MANY JOBS
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final Set<String> monitoredJobs = new ConcurrentSkipListSet<>();
 
     private final String owner;
     private final String repo ;
@@ -61,8 +64,8 @@ public class Monitor implements Runnable {
                     Instant time = Instant.parse(node.get("updated_at").asText());
                     String id = node.get("id").asText();
 
-                    if (timestamp == null || time.isAfter(workflowTime)) {
-                        System.out.printf("Id: %s | status: %s.%n",
+                    if (timestamp == null || time.isAfter(timestamp)) {
+                        System.out.printf(WHITE_BOLD + "Id: %s"+ RESET +" | status: %s.%n",
                                 id,
                                 node.get("status").asText());
                         printJobsWithSteps(id);
@@ -101,31 +104,28 @@ public class Monitor implements Runnable {
         JsonNode jobsRuns = mapper.readTree(responseRuns.body());
         JsonNode array = jobsRuns.get("jobs");
         for (JsonNode job : array) {
-            String JobId = job.get("id").asText();
+            String jobId = job.get("id").asText();
             String status = job.get("status").asText();
             boolean completionStatus = status.equals("completed");
             String jobName = job.get("name").asText();
 
-            if(!completionStatus) {
+            if(!completionStatus && monitoredJobs.add(jobId)) {
                 executorService.submit(() -> {
                     try {
-                        monitorJobSteps(JobId, jobName);
+                        monitorJobSteps(jobId, jobName);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 });
-            } else {
-                customPrint(jobName, JobId, status, jobsRuns.get("conclusion").asText());
             }
         }
     }
 
     private void monitorJobSteps(String id, String jobName) throws IOException, InterruptedException {
-        Set<String> completedSteps = new HashSet<>();
+        Map<String, String> stepStatuses = new ConcurrentHashMap<>();
         boolean completionStatus = false;
-        String jobConclusion = "";
 
         while (running && !completionStatus) {
             HttpRequest jobRequest = createRequest(String.format(GET_JOB_RUN, owner, repo, id));
@@ -139,43 +139,49 @@ public class Monitor implements Runnable {
             for (JsonNode step : steps) {
                 String stepStatus = step.get("status").asText();
                 String stepName = step.get("name").asText();
-                if(stepStatus.equals("completed") && completedSteps.add(stepName)) {
-                    System.out.printf("Step %s with JobID: %s: Completed At: %s| Conclusion: %s%n"
-                            , stepName
-                            , id
-                            , step.get("completed_at").asText()
-                            , step.get("conclusion").asText());
-                } else {
-                    System.out.printf("Step %s with JobID: %s: Started At: %s| Status: %s%n"
-                            , stepName
-                            , id
-                            , step.get("started_at").asText()
-                            , stepStatus);
+
+                String previousStatus = stepStatuses.put(stepName, stepStatus);
+
+                if(!stepStatus.equals(previousStatus)) {
+                    if ("completed".equals(stepStatus)) {
+                        System.out.printf("Step %s with JobID: %s: Completed At: %s| Conclusion: %s%n"
+                                , stepName
+                                , id
+                                , step.get("completed_at").asText()
+                                , step.get("conclusion").asText());
+                    } else {
+                        // TODO: Address different not completed statuses: Pending, in_process, etc implementing YELLOW
+                        System.out.printf("Step %s with JobID: %s: Started At: %s| Status: %s%n"
+                                , stepName
+                                , id
+                                , step.get("started_at").asText()
+                                , stepStatus);
+                    }
                 }
             }
             completionStatus = jobRun.get("status").asText().equals("completed");
-            jobConclusion = (completionStatus) ? jobRun.get("conclusion").asText() : "unknown";
-
+            if(completionStatus)
+                customPrint(jobName, id, "completed", jobRun.get("conclusion").asText());
             //To avoid hitting API rate limits
-            Thread.sleep(3000);
+            else
+                Thread.sleep(3000);
         }
 
-        if(completionStatus && running)
-            customPrint(jobName, id, "completed", jobConclusion);
+
     }
 
     private void customPrint(String jobName, String id, String status, String jobConclusion) {
         if (status.equals("completed")) {
             switch (jobConclusion) {
                 case "success" ->
-                        System.out.printf(GREEN_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+                        System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
                 case "failure" ->
-                        System.out.printf(RED_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+                        System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
                 default ->
-                        System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+                        System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
             }
         } else {
-            System.out.printf(YELLOW_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+            System.out.printf(YELLOW_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+" has been completed with status of: '%s'%n", jobName, id, jobConclusion);
         }
     }
 
