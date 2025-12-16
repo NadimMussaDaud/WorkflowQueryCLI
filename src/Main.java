@@ -3,17 +3,20 @@ import java.nio.file.Files;
 import java.time.Instant;
 import java.util.List;
 
-public class main {
+public class Main {
 
     static final String FILENAME = "Repositories.txt";
     static final File file = new File(FILENAME);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        String[] urlParts = args[0].split("/");
-        String repo = urlParts[4];
-        String owner = urlParts[3];
+        //String[] urlParts = args[0].split("/");
+        String repo = args[0];
+        //String owner = urlParts[3];
         String token = args[1];
         String timestamp = null;
+
+        System.out.println("This is the repo: " + repo);
+        System.out.println("This is the token: " + token);
 
         if(!file.exists() && !file.createNewFile()) throw new RuntimeException();
 
@@ -23,7 +26,7 @@ public class main {
             if(info[0].equals(repo)) timestamp = info[1];
         }
 
-        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token, owner);
+        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token, "NadimMussaDaud");
 
         Thread monitorThread = new Thread(monitor, "monitor-thread");
         monitorThread.start();

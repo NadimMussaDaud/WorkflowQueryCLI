@@ -49,14 +49,15 @@ public class Monitor implements Runnable {
                         HttpResponse.BodyHandlers.ofString()
                 );
                 JsonNode workflowRuns = mapper.readTree(responseRuns.body());
-                int runsNumber = workflowRuns.get("total_count").asInt();
                 Instant workflowTime = timestamp;
                 JsonNode array = workflowRuns.get("workflow_runs");
                 for (JsonNode node : array) {
                     Instant time = Instant.parse(node.get("updated_at").asText());
 
                     if (timestamp == null || time.isAfter(workflowTime)) {
-                        System.out.println("This is some info for a workflow run");
+                        System.out.printf("Id: %s | status: %s.%n",
+                                node.get("id").asText(),
+                                node.get("status").asText());
                     }
                     // Find the most recent time
                     if (workflowTime == null || time.isAfter(workflowTime)) {
