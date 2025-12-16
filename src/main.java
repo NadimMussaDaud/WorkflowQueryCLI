@@ -15,7 +15,7 @@ public class main {
         String token = args[1];
         String timestamp = null;
 
-        if(!file.exists()) file.createNewFile();
+        if(!file.exists() && !file.createNewFile()) throw new RuntimeException();
 
         List<String> lines = Files.readAllLines(file.toPath());
         for (String line : lines) {

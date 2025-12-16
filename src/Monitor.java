@@ -81,7 +81,6 @@ public class Monitor implements Runnable {
 
     public void stop() throws IOException {
         running = false;
-        //write into .txt timestamp together with repo url
         try (FileWriter writer = new FileWriter("Repositories.txt", true)) {
             writer.write(String.format("%s %s\n", repo, timestamp.toString()));
         }
