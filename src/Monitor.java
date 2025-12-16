@@ -20,9 +20,7 @@ public class Monitor implements Runnable {
     private final HttpClient httpClient;
 
 
-    private final String GET_WORKFLOWS_RUNS = String.format("https://api.github.com/repos/%s/%s/actions/runs", owner, repo);
-    private final String GET_RUNS_JOBS = String.format("https://api.github.com/repos/%s/%s/actions/runs", owner, repo);
-    private final String GET_JOBS_STEPS = String.format("https://api.github.com/repos/%s/%s/actions/runs", owner, repo);
+    private final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
 
     public Monitor (String repo, @Nullable Instant timestamp, String token , String owner) {
         this.timestamp = timestamp;
@@ -41,7 +39,7 @@ public class Monitor implements Runnable {
                 .header("Accept", "application/vnd.github+json")
                 .GET();
         HttpRequest requestRuns = requestBase
-                .uri(URI.create(GET_WORKFLOWS_RUNS))
+                .uri(URI.create(String.format(GET_WORKFLOWS_RUNS, owner, repo)))
                 .build();
 
         while (running) {
@@ -53,18 +51,16 @@ public class Monitor implements Runnable {
                 JsonNode workflowRuns = mapper.readTree(responseRuns.body());
                 int runsNumber = workflowRuns.get("total_count").asInt();
                 Instant workflowTime = timestamp;
-                for(int i = 0; i < runsNumber; i++) {
-                    JsonNode array = workflowRuns.get("workflow_runs");
-                    for (JsonNode node : array) {
-                        Instant time = Instant.parse(node.get("updated_at").asText());
+                JsonNode array = workflowRuns.get("workflow_runs");
+                for (JsonNode node : array) {
+                    Instant time = Instant.parse(node.get("updated_at").asText());
 
-                        if (timestamp == null || time.isAfter(workflowTime)) {
-                            System.out.println("This is some info for a workflow run");
-                        }
-                        // Find the most recent time
-                        if (workflowTime == null || time.isAfter(workflowTime)) {
-                            workflowTime = time;
-                        }
+                    if (timestamp == null || time.isAfter(workflowTime)) {
+                        System.out.println("This is some info for a workflow run");
+                    }
+                    // Find the most recent time
+                    if (workflowTime == null || time.isAfter(workflowTime)) {
+                        workflowTime = time;
                     }
                 }
                 timestamp = workflowTime;

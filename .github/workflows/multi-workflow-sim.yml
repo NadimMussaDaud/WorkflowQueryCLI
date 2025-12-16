@@ -1,0 +1,36 @@
+name: multi-workflow-sim
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "What kind of run do you want?"
+        required: true
+        type: choice
+        options:
+          - success
+          - failing
+
+jobs:
+  build:
+    name: Build job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Always-success step
+        run: echo "This always succeeds."
+
+      - name: Conditional failing step
+        if: ${{ github.event.inputs.scenario == 'failing' }}
+        run: |
+          echo "This step fails in 'failing' scenario."
+          exit 1
+
+      - name: Long-running step
+        run: |
+          echo "Simulating long work..."
+          sleep 20
+          echo "Done."
