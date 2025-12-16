@@ -144,17 +144,21 @@ public class Monitor implements Runnable {
 
                 if(!stepStatus.equals(previousStatus)) {
                     if ("completed".equals(stepStatus)) {
-                        System.out.printf("Step %s with JobID: %s: Completed At: %s| Conclusion: %s%n"
+                        System.out.printf("Step %s with JobID: %s: Completed At: %s| "+GREEN_BOLD+"Conclusion: %s"+RESET+"%n"
                                 , stepName
                                 , id
                                 , step.get("completed_at").asText()
                                 , step.get("conclusion").asText());
                     } else {
-                        // TODO: Address different not completed statuses: Pending, in_process, etc implementing YELLOW
-                        System.out.printf("Step %s with JobID: %s: Started At: %s| Status: %s%n"
+                        if(step.get("started_at") == null)
+                            System.out.printf("Step %s with JobID: %s: Started At: %s| "+YELLOW_BOLD+"Status: %s%n" + RESET
                                 , stepName
                                 , id
                                 , step.get("started_at").asText()
+                                , stepStatus);
+                        else System.out.printf("Step %s with JobID: %s | "+YELLOW_BOLD+"Status: %s%n" + RESET
+                                , stepName
+                                , id
                                 , stepStatus);
                     }
                 }
