@@ -5,6 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,6 +23,7 @@ public class Monitor implements Runnable {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
     private static final String GET_JOBS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs/%s/jobs";
+    private static final String GET_JOB_RUN = "https://api.github.com/repos/%s/%s/actions/jobs/%s";
 
     private final String owner;
     private final String repo ;
@@ -86,6 +89,7 @@ public class Monitor implements Runnable {
 
     public void stop() throws IOException {
         running = false;
+        executorService.shutdown();
         try (FileWriter writer = new FileWriter(Main.FILENAME, true)) {
             writer.write(String.format("%s %s\n", repo, timestamp.toString()));
         }
@@ -105,18 +109,61 @@ public class Monitor implements Runnable {
         for (JsonNode job : array) {
             String JobId = job.get("id").asText();
             boolean completionStatus = jobsRuns.get("status").asText().equals("completed");
+            String jobName = job.get("name").asText();
 
             if(!completionStatus) {
-                //TODO: Here we need a thread to keep running addressing each job. To keep overseeing the Steps within the Job and its status
-                executorService.submit(() -> monitorJobSteps(JobId, jobsRequest));
+                executorService.submit(() -> {
+                    try {
+                        monitorJobSteps(JobId, jobName, requestBase);
+                    } catch (IOException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } else {
-                //TODO: Print that Job has been completed and related info.
+                System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobsRuns.get("conclusion").asText());
             }
         }
     }
 
-    private void monitorJobSteps(String jobId, HttpRequest request) {
-        // TODO: While the JOB is not completed keep printing the steps status and timestamps together with Job ID with those steps
-        // TODO: If completed then just print that it has been completed and related info.
+    private void monitorJobSteps(String id, String jobName, HttpRequest.Builder request) throws IOException, InterruptedException {
+        Set<String> completedSteps = new HashSet<>();
+        boolean completionStatus = false;
+        String jobConclusion = "";
+
+        while (running && !completionStatus) {
+            HttpRequest jobRequest = request
+                    .uri(URI.create(String.format(GET_JOB_RUN, owner, repo, id)))
+                    .build();
+            HttpResponse<String> responseJobRun = httpClient.send(
+                    jobRequest,
+                    HttpResponse.BodyHandlers.ofString()
+            );
+            JsonNode jobRun = mapper.readTree(responseJobRun.body());
+            JsonNode steps = jobRun.get("steps");
+
+            for (JsonNode step : steps) {
+                String stepStatus = step.get("status").asText();
+                String stepName = step.get("name").asText();
+                if(!stepStatus.equals("completed") || completedSteps.add(stepName)) {
+                    System.out.printf("Step %s with JobID: %s: Started At: %s| Status: %s | Conclusion: %s%n"
+                            , stepName
+                            , id
+                            , step.get("started_at").asText()
+                            , stepStatus
+                            , step.get("conclusion").asText());
+                } else {
+                    System.out.printf("Step %s with JobID: %s: Completed At: %s| Conclusion: %s%n"
+                            , stepName
+                            , id
+                            , step.get("completed_at").asText()
+                            , step.get("conclusion").asText());
+                }
+            }
+            completionStatus = jobRun.get("status").asText().equals("completed");
+            jobConclusion = jobRun.get("conclusion").asText();
+        }
+
+        if(completionStatus && running)
+            System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobConclusion);
     }
 }
