@@ -4,14 +4,11 @@ import java.time.Instant;
 import java.util.List;
 
 public class Main {
-
     static final String FILENAME = "Repositories.txt";
     static final File file = new File(FILENAME);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        //String[] urlParts = args[0].split("/");
         String repo = args[0];
-        //String owner = urlParts[3];
         String token = args[1];
         String timestamp = null;
 
@@ -42,7 +39,6 @@ public class Main {
         monitorThread.join();
 
         System.out.println("Stopped.");
-
     }
 
 }
