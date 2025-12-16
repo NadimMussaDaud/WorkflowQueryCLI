@@ -16,6 +16,9 @@ import org.jetbrains.annotations.Nullable;
 
 public class Monitor implements Runnable {
     //TODO: Try to separate Jobs, Workflow runs and Steps with some structure.
+    public static final String RESET = "\033[0m";
+
+    public static final String WHITE_BOLD = "\033[1;37m";
     public static final String RED_BOLD = "\033[1;31m";
     public static final String GREEN_BOLD = "\033[1;32m";
     public static final String YELLOW_BOLD = "\033[1;33m";
@@ -110,7 +113,8 @@ public class Monitor implements Runnable {
         JsonNode array = jobsRuns.get("jobs");
         for (JsonNode job : array) {
             String JobId = job.get("id").asText();
-            boolean completionStatus = jobsRuns.get("status").asText().equals("completed");
+            String status = jobsRuns.get("status").asText();
+            boolean completionStatus = status.equals("completed");
             String jobName = job.get("name").asText();
 
             if(!completionStatus) {
@@ -122,7 +126,7 @@ public class Monitor implements Runnable {
                     }
                 });
             } else {
-                System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobsRuns.get("conclusion").asText());
+                customPrint(jobName, id,status, jobsRuns.get("conclusion").asText());
             }
         }
     }
@@ -166,11 +170,21 @@ public class Monitor implements Runnable {
         }
 
         if(completionStatus && running)
-            System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+            customPrint( jobName, id, "completed", jobConclusion);
     }
 
     private void customPrint(String jobName, String id, String status, String jobConclusion) {
-        //TODO: Implement colors scheme: Green for completed, Yellow for in_progress... and Red for failures
-
+        if (status.equals("completed")) {
+            switch (jobConclusion) {
+                case "success" ->
+                        System.out.printf(GREEN_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+                case "failure" ->
+                        System.out.printf(RED_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+                default ->
+                        System.out.printf("JOB %s with ID: %s has been completed with status of: '%s'%n", jobName, id, jobConclusion);
+            }
+        } else {
+            System.out.printf(YELLOW_BOLD + "JOB %s with ID: %s has been completed with status of: '%s'%n" + RESET, jobName, id, jobConclusion);
+        }
     }
 }
