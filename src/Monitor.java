@@ -238,8 +238,7 @@ public class Monitor implements Runnable {
                 createRequest(String.format(GET_REPO, repo)),
                 HttpResponse.BodyHandlers.ofString()
         );
-        JsonNode res = mapper.readTree(response.body());
-        JsonNode items = res.get("items");
+        JsonNode items = mapper.readTree(response.body()).get("items");
 
         if (items != null && !items.isEmpty()) {
             return items.get(0).get("owner").get("login").asText();
