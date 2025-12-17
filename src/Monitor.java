@@ -242,8 +242,6 @@ public class Monitor implements Runnable {
         JsonNode items = res.get("items");
 
         if (items != null && !items.isEmpty()) {
-            System.out.println("This is the owner: " + items.get(0).get("owner").get("login").asText());
-
             return items.get(0).get("owner").get("login").asText();
         } else {
             throw new Exception("Repository not found: " + repo);
