@@ -5,11 +5,9 @@ import java.util.List;
 
 public class Main {
     static final String FILENAME = "Repositories.txt";
-    static final String OWNER = "NadimMussaDaud";
     static final File file = new File(FILENAME);
 
-    //TODO: Check on the owner info. Current just as an Example
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws Exception {
         String repo = args[0], token = args[1];
         String timestamp = null;
 
@@ -21,7 +19,7 @@ public class Main {
             if(info[0].equals(repo)) timestamp = info[1];
         }
 
-        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token, OWNER);
+        Monitor monitor = new Monitor(repo, timestamp==null ? null : Instant.parse(timestamp) , token);
 
         Thread monitorThread = new Thread(monitor, "monitor-thread");
         monitorThread.start();

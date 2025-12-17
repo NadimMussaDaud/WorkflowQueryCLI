@@ -27,6 +27,7 @@ public class Monitor implements Runnable {
     private static final String GET_WORKFLOWS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs";
     private static final String GET_JOBS_RUNS = "https://api.github.com/repos/%s/%s/actions/runs/%s/jobs";
     private static final String GET_JOB_RUN = "https://api.github.com/repos/%s/%s/actions/jobs/%s";
+    private static final String GET_REPO = "https://api.github.com/search/repositories?q=%s";
 
     //This is an executor for many Threads since we assume MANY JOBS
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -40,14 +41,14 @@ public class Monitor implements Runnable {
     private boolean running = true;
     private final HttpClient httpClient;
 
-    public Monitor (String repo, @Nullable Instant timestamp, String token , String owner) {
+    public Monitor (String repo, @Nullable Instant timestamp, String token) throws Exception {
         this.timestamp = timestamp;
         this.repo = repo;
         this.token = token;
-        this.owner = owner;
         httpClient = HttpClient.newBuilder()
-                    .version(HttpClient.Version.HTTP_2)
-                    .build();
+                .version(HttpClient.Version.HTTP_2)
+                .build();
+        this.owner = getOwner(repo);
     }
 
     @Override
@@ -114,7 +115,7 @@ public class Monitor implements Runnable {
             if(monitoredJobs.add(jobId)) {
                 executorService.submit(() -> {
                     try {
-                        System.out.printf("Job %s started%n", jobName);
+                        System.out.printf("JOB %s [%s%s%s] started%n", jobName, WHITE_BOLD, jobId, RESET);
                         monitorJobSteps(jobId, jobName);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
@@ -230,5 +231,22 @@ public class Monitor implements Runnable {
                 .header("Accept", "application/vnd.github+json")
                 .GET()
                 .build();
+    }
+
+    private String getOwner(String repo) throws Exception {
+        HttpResponse<String> response = httpClient.send(
+                createRequest(String.format(GET_REPO, repo)),
+                HttpResponse.BodyHandlers.ofString()
+        );
+        JsonNode res = mapper.readTree(response.body());
+        JsonNode items = res.get("items");
+
+        if (items != null && !items.isEmpty()) {
+            System.out.println("This is the owner: " + items.get(0).get("owner").get("login").asText());
+
+            return items.get(0).get("owner").get("login").asText();
+        } else {
+            throw new Exception("Repository not found: " + repo);
+        }
     }
 }
