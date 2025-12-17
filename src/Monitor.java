@@ -67,8 +67,10 @@ public class Monitor implements Runnable {
                     String id = node.get("id").asText();
 
                     if (timestamp == null || time.isAfter(timestamp)) {
-                        System.out.printf(WHITE_BOLD + "Id: %s"+ RESET +" | status: %s.%n",
+                        System.out.printf("%s[WORKFLOW %s]%s (%s)%n",
+                                WHITE_BOLD,
                                 id,
+                                RESET,
                                 node.get("status").asText());
                         printJobsWithSteps(id);
                     }
@@ -145,29 +147,41 @@ public class Monitor implements Runnable {
 
                 if(!stepStatus.equals(previousStatus)) {
                     if ("completed".equals(stepStatus)) {
-                        System.out.printf("Step %s with JobID: "+WHITE_BOLD+"%s"+RESET+", SHA: %s , Branch: %s | Started At: %s | Completed At: %s| "+GREEN_BOLD+"Conclusion: %s"+RESET+"%n"
+                        System.out.printf("Step %s %s[Job %s]%s SHA:%s Branch:%s %s → %s %s(%s)%s%n"
                                 , stepName
+                                , WHITE_BOLD
                                 , id
+                                , RESET
                                 , jobRun.get("head_sha").asText()
                                 , jobRun.get("head_branch").asText()
                                 , step.get("started_at").asText()
                                 , step.get("completed_at").asText()
-                                , step.get("conclusion").asText());
+                                , GREEN_BOLD
+                                , step.get("conclusion").asText()
+                                , RESET);
                     } else {
                         if(step.get("started_at") == null)
-                            System.out.printf("Step %s with JobID: "+WHITE_BOLD+"%s "+RESET+" SHA: %s , Branch: %s | "+YELLOW_BOLD+"Status: %s%n" + RESET
+                            System.out.printf("Step %s %s[Job %s]%s SHA:%s Branch:%s %s(%s)%s%n" + RESET
                                     , stepName
+                                    , WHITE_BOLD
                                     , id
+                                    , RESET
                                     , jobRun.get("head_sha").asText()
                                     , jobRun.get("head_branch").asText()
-                                    , stepStatus);
-                        else System.out.printf("Step %s with JobID:" + WHITE_BOLD +"%s" + RESET + " SHA: %s , Branch: %s | Started At: %s| "+YELLOW_BOLD+"Status: %s%n" + RESET
+                                    , YELLOW_BOLD
+                                    , stepStatus
+                                    , RESET);
+                        else System.out.printf("Step %s %s[Job %s]%s SHA:%s Branch:%s %s → ... %s(%s)%s%n"
                                 , stepName
+                                , WHITE_BOLD
                                 , id
+                                , RESET
                                 , jobRun.get("head_sha").asText()
                                 , jobRun.get("head_branch").asText()
                                 , step.get("started_at").asText()
-                                , stepStatus);
+                                , YELLOW_BOLD
+                                , stepStatus
+                                , RESET);
                     }
                 }
             }
@@ -189,20 +203,23 @@ public class Monitor implements Runnable {
 
     }
 
-    private void customPrint(String jobName, String id, String sha, String branch, String startTime ,String completeTime,String jobConclusion) {
+    private void customPrint(String jobName,
+                             String id,
+                             String sha,
+                             String branch,
+                             String startTime,
+                             String completeTime,
+                             String jobConclusion) {
         switch (jobConclusion) {
             case "success" ->
-                    System.out.printf(GREEN_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +"," +
-                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
-                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
+                    System.out.printf("JOB %s %s[%s]%s SHA:%s Branch:%s %s → %s %s(%s)%s%n",
+                            jobName, WHITE_BOLD, id, RESET, sha, branch, startTime, completeTime, GREEN_BOLD, jobConclusion, RESET);
             case "failure" ->
-                    System.out.printf(RED_BOLD + "JOB %s with ID:"+WHITE_BOLD+" %s"+ RESET +"," +
-                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
-                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
+                    System.out.printf("JOB %s %s[%s]%s SHA:%s Branch:%s %s → %s %s(%s)%s%n",
+                            jobName,WHITE_BOLD, id, RESET, sha, branch, startTime, completeTime,RED_BOLD, jobConclusion, RESET);
             default ->
-                    System.out.printf("JOB %s with ID:"+WHITE_BOLD+" %s"+RESET+"," +
-                            " SHA: %s, Branch: %s started at %s has been completed at %s with status of: '%s'%n",
-                            jobName, id, sha, branch, startTime, completeTime, jobConclusion);
+                    System.out.printf("JOB %s %s[%s]%s SHA:%s Branch:%s %s → %s (%s)%n",
+                            jobName,WHITE_BOLD, id, RESET, sha, branch, startTime, completeTime, jobConclusion);
         }
     }
 
